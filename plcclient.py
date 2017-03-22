@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 from builtins import dict
 from builtins import int
-from builtins import str
+#from builtins import str
 from builtins import super
 
 import struct

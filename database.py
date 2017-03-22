@@ -105,15 +105,16 @@ class Database(object):
         Insert helper method.  This method uses the initialized table and columns defined in the constructor.  Simply pass a tuple of values
         you want inserted (in proper order) and they will be inserted into the database and will be followed by a commit() to the database.
         """
-        if (self._table or self._columns) is None:
+        if self._table is None or self._columns is None:
             self._build_helper_strings()
             
         try:
             with self.connection:
                 self.cursor.execute(self._queryStrInsertInto + ' ' + self._queryStrColumns + ' ' + self._queryStrValues, *rows)
-        except:
+        except Exception as e:
             #todo: do something here to handle exception
-            logger.warning('something went wrong with insert()...')
+            exc_tb = sys.exc_info()[2]
+            logger.warning('something went wrong with insert()... {} - line {}'.format(e, exc_tb.tb_lineno))
 
     def retrieve(self, **kwargs):
         """
@@ -141,11 +142,14 @@ class Database(object):
     @property
     def columns(self):
         try:
+            if self._table is None:
+                self._table = self.table
             if self._columns is None:
                 row_factory = self.cursor.row_factory
                 self.cursor.row_factory = None
                 self.cursor.execute('PRAGMA TABLE_INFO({})'.format(self._table))
-                self._columns = [(params[1], params[2]) for params in self.cursor.fetechall()]
+		cols = self.cursor.fetchall()
+                self._columns = [(params[1], params[2]) for params in cols]
                 self.cursor.row_factory = row_factory
         finally:
             return self._columns
