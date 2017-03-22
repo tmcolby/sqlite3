@@ -12,6 +12,7 @@ import struct
 import time
 from configparser import ConfigParser
 import logging
+import sys
 
 import snap7.client as S7
 # import snap7.common
@@ -150,8 +151,10 @@ class PlcClient(S7.Client):
                         value = int(bool(value & 1 << bit))
                 
                 response.append((tag,value))
-        except:
-            logger.error('tag_read failed')
+        except Exception as e:
+            #exc_type, exc_obj, exc_tb = sys.exc_info()
+            exc_tb = sys.exc_info()[2]
+            logger.error('tag_read failed - {} - line {}'.format(e, exc_tb.tb_lineno))
             response = None
         finally:
             if response is not None:
