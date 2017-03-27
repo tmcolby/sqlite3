@@ -122,18 +122,17 @@ def get_data_logs(records, start):
 
 @app.route('/alarm/json/<int:records>/<start>')
 def get_alarm_logs(records, start):
-    response = dict(message='call not supported yet; need to implement')
-    return jsonify(response)
+    return jsonify([])
 
-@app.route('/dbreset')
-def dbreset():
-    response = dict(message='call not supported; not needed')
-    return jsonify(response)
-
-@app.route('/exit')
-def kill_datalogger():
-    response = dict(message='call not supported yet; need to implement')
-    return jsonify(response)
+#@app.route('/dbreset')
+#def dbreset():
+#    response = dict(message='call not supported; not needed')
+#    return jsonify(response)
+#
+#@app.route('/exit')
+#def kill_datalogger():
+#    response = dict(message='call not supported yet; need to implement')
+#    return jsonify(response)
 
 @app.route('/killkenny')
 def kill_kenny():

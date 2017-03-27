@@ -143,7 +143,7 @@ class Database(object):
     def columns(self):
         try:
             if self._table is None:
-                self._table = self.table
+                self.table
             if self._columns is None:
                 row_factory = self.cursor.row_factory
                 self.cursor.row_factory = None
