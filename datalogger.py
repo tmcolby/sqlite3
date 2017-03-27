@@ -77,7 +77,7 @@ def main():
             
             cyclicLogs = {key.replace('{','[').replace('}',']'):dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['cyclic']}
             onChangeLogs = {key.replace('{','[').replace('}',']'):dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['on_change']}
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
             
             #insert cyclic logs into db
             logger.info('Inserting cyclic logs into DB')
