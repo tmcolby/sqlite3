@@ -14,6 +14,7 @@ from flask import request
 from flask import jsonify
 from werkzeug.serving import WSGIRequestHandler
 import re
+from dateutil import parser
 
 from database import Database
 from database import dict_factory
@@ -110,6 +111,7 @@ def get_data_logs(records, start):
                 #select all with timestamp >= startTime
                 db.cursor.execute('SELECT * FROM {} WHERE Time>="{}"'.format(db.table, startTime))      
         else:
+            start = parser.parse(start).isoformat()
             #grab time 'records' number of time stamps from 'start' time forward
             timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format(db.table, start, records)
             #select the time stamp that is the newest from the timestamps set of records
@@ -122,18 +124,17 @@ def get_data_logs(records, start):
 
 @app.route('/alarm/json/<int:records>/<start>')
 def get_alarm_logs(records, start):
-    response = dict(message='call not supported yet; need to implement')
-    return jsonify(response)
+    return jsonify([])
 
-@app.route('/dbreset')
-def dbreset():
-    response = dict(message='call not supported; not needed')
-    return jsonify(response)
-
-@app.route('/exit')
-def kill_datalogger():
-    response = dict(message='call not supported yet; need to implement')
-    return jsonify(response)
+#@app.route('/dbreset')
+#def dbreset():
+#    response = dict(message='call not supported; not needed')
+#    return jsonify(response)
+#
+#@app.route('/exit')
+#def kill_datalogger():
+#    response = dict(message='call not supported yet; need to implement')
+#    return jsonify(response)
 
 @app.route('/killkenny')
 def kill_kenny():
