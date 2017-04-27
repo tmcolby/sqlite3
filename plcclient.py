@@ -182,7 +182,7 @@ class PlcClient(S7.Client):
         return self._cycles
   
 def main():
-    plc = PlcClient('tags.cfg', 'plc.cfg')
+    plc = PlcClient('data_tags.cfg', 'plc.cfg')
     plc.connect()
     while True:
         readResult = plc.tag_read(plc.tagList)
