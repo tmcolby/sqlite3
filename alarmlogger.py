@@ -60,8 +60,10 @@ def main():
     dbTable = 'alarm_log'
     dbColumns = (('Procedure', 'INTEGER'), ('Class', 'INTEGER'), ('State', 'INTEGER'), ('Description', 'TEXT'), ('Time', 'TEXT'), ('TZ', 'TEXT')) 
     db = Database(dbFile)
-    if not db.table:
-        db.create(dbTable, dbColumns)
+    
+    #TODO got to fix this!! need to implement the creation script (lookup flask documentation for example)
+#     if not db.table:
+#         db.create(dbTable, dbColumns)
     
     #clear the table if desired
     clearTable = sys.argv[1] if len(sys.argv) == 2 else None
@@ -90,21 +92,15 @@ def main():
         if queue.not_empty:
             dequeue = queue.get()
             
-#             cyclicLogs = {key.replace('{','[').replace('}',']'):dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['cyclic']}
+            #all tags defined for alarms should be type "on-change".  to be safe, explicitly filter for on_change anyway.
             onChangeLogs = {key:dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['on_change']}
             timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
             
-            #insert cyclic logs into db
-#             logger.info('Inserting cyclic logs into DB')
-#             for tag, val in cyclicLogs.items():
-#                 print(tag, val, timestamp, tzid)
-#                 db.insert((tag, val, timestamp, 1, tzid))
-            
-            #on first passs, onChangeLogsWere will be empty.  copy onChangeLogs into it with inverted values
+            #on first pass, onChangeLogsWere will be empty.  copy onChangeLogs into it with bit-wise inverted values
             if not onChangeLogsWere:
                 onChangeLogsWere = {tag:~val for tag, val in onChangeLogs.items()}
 
-            #if a change in any of the onChangeLogs tags are detected.. do stuff
+            #test for changes 
             if onChangeLogs and cmp(onChangeLogs, onChangeLogsWere):
                 logger.info('On-change log/s detected; Inserting into DB')
                 for tag, val in onChangeLogs.items():
@@ -116,13 +112,13 @@ def main():
                             for position in bit_test(changedBits):
                                 #if there are changed bits, 
                                 print('position value {}, position {}'.format(position, position.bit_length()))
-                                print(alarmDefinition[tag]['1'])
                                 description = alarmDefinition[tag][str(int(position).bit_length())]
                                 state = int(bool(changedBits & onChangeLogs[tag]))
-#                                 state = int(bool(onChangeLogs[tag] & position.bit_length()))
                                 _class = alarmDefinition[tag].getint('class')
                                 print('Change Detected! {} = {}    Desc: {} = {}   {}   {}   class {}'.format(tag, val, description, state, timestamp, tzid, _class))
                                 db.insert(dbTable, (2, _class, state, description, timestamp, tzid))
+                                
+                #cache a copy tags for comparison next scan
                 onChangeLogsWere = onChangeLogs
          
     
