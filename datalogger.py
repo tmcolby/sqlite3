@@ -51,8 +51,10 @@ def main():
     dbTable = 'data_log'
     dbColumns = (('Name', 'TEXT'), ('Value', 'REAL'), ('Time', 'TEXT'), ('Quality', 'INTEGER'), ('TZ', 'TEXT')) 
     db = Database(dbFile)
-    if not db.table:
-        db.create(dbTable, dbColumns)
+    
+    #TODO need to implement the table creation script!!!!
+#     if not db.table:
+#         db.create(dbTable, dbColumns)
     
     #clear the table if desired
     clearTable = sys.argv[1] if len(sys.argv) == 2 else None
@@ -85,7 +87,7 @@ def main():
             logger.info('Inserting cyclic logs into DB')
             for tag, val in cyclicLogs.items():
                 print(tag, val, timestamp, tzid)
-                db.insert((tag, val, timestamp, 1, tzid))
+                db.insert(dbTable, (tag, val, timestamp, 1, tzid))
             
             #test on_change logs; if there was a change, insert into db    
             if onChangeLogs and cmp(onChangeLogs, onChangeLogsWere):
@@ -93,7 +95,7 @@ def main():
                 for tag, val in onChangeLogs.items():
                     if (not onChangeLogsWere) or (onChangeLogs[tag] != onChangeLogsWere[tag]):
                         print(tag, val, timestamp, tzid)
-                        db.insert((tag, val, timestamp, 1, tzid))
+                        db.insert(dbTable, (tag, val, timestamp, 1, tzid))
                 onChangeLogsWere = onChangeLogs
          
     

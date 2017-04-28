@@ -122,7 +122,7 @@ def main():
 #                                 state = int(bool(onChangeLogs[tag] & position.bit_length()))
                                 _class = alarmDefinition[tag].getint('class')
                                 print('Change Detected! {} = {}    Desc: {} = {}   {}   {}   class {}'.format(tag, val, description, state, timestamp, tzid, _class))
-                                db.insert((2, _class, state, description, timestamp, tzid))
+                                db.insert(dbTable, (2, _class, state, description, timestamp, tzid))
                 onChangeLogsWere = onChangeLogs
          
     

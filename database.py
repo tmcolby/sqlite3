@@ -77,12 +77,15 @@ class Database(object):
 
     def _build_helper_strings(self): 
         # 'INSERT INTO table'
-        self._queryStrInsertInto = 'INSERT INTO {}'.format(self.table)
+        self._queryStrInsertInto = 'INSERT INTO {}'.format(self._table)
+        
+        #this will populate self._columns appropriately.  requires the self._table to be set ahead of time.
+        self._columns = self.columns
         
         # '(col1, col2, col3, ...)'
         self._queryStrColumns = '('
         self._queryStrColumnsTypes = '('
-        for column, columnType in self.columns:
+        for column, columnType in self._columns:
             self._queryStrColumns += str(column) + ', '
             self._queryStrColumnsTypes += str(column) + ' ' + str(columnType) + ', '
         self._queryStrColumns = self._queryStrColumns[:-2] + ')'
@@ -90,7 +93,7 @@ class Database(object):
         
         # '(?, ?, ?, ...)'
         self._queryStrValues = 'VALUES ('
-        for _ in range(len(self.columns)):
+        for _ in range(len(self._columns)):
             self._queryStrValues += '?, '
         self._queryStrValues = self._queryStrValues[:-2] + ')'
         
@@ -100,13 +103,13 @@ class Database(object):
     def unset_row_factory(self):
         self.cursor.row_factory = None
 
-    def insert(self, *rows):
+    def insert(self, table, *rows):
         """
         Insert helper method.  This method uses the initialized table and columns defined in the constructor.  Simply pass a tuple of values
         you want inserted (in proper order) and they will be inserted into the database and will be followed by a commit() to the database.
         """
-        if self._table is None or self._columns is None:
-            self._build_helper_strings()
+        self._table = table
+        self._build_helper_strings()
             
         try:
             with self.connection:
@@ -141,29 +144,34 @@ class Database(object):
 
     @property
     def columns(self):
+        """
+        consider not making this a property and keeping totally internal
+        """
         try:
-            if self._table is None:
-                self.table
-            if self._columns is None:
-                row_factory = self.cursor.row_factory
-                self.cursor.row_factory = None
-                self.cursor.execute('PRAGMA TABLE_INFO({})'.format(self._table))
-		cols = self.cursor.fetchall()
-                self._columns = [(params[1], params[2]) for params in cols]
-                self.cursor.row_factory = row_factory
+            row_factory = self.cursor.row_factory
+            self.cursor.row_factory = None
+            self.cursor.execute('PRAGMA TABLE_INFO({})'.format(self._table))
+            cols = self.cursor.fetchall()
+            self._columns = [(params[1], params[2]) for params in cols]
+            self.cursor.row_factory = row_factory
         finally:
             return self._columns
+        
     @property
     def table(self):
-        try:
-            if self._table is None:
-                row_factory = self.cursor.row_factory
-                self.cursor.row_factory = None
-                self.cursor.execute('SELECT name FROM sqlite_master WHERE type="table"')
-                self._table = self.cursor.fetchone()[0]
-                self.cursor.row_factory = row_factory
-        finally:
-            return self._table
+#         try:
+#             if self._table is None:
+#                 row_factory = self.cursor.row_factory
+#                 self.cursor.row_factory = None
+#                 self.cursor.execute('SELECT name FROM sqlite_master WHERE type="table"')
+#                 self._table = self.cursor.fetchone()[0]
+#                 self.cursor.row_factory = row_factory
+#         finally:
+        return self._table
+    
+    @table.setter
+    def table(self, table):
+        self._table = table
    
      
 class __Database(object):
