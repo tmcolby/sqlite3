@@ -101,23 +101,23 @@ def get_data_logs(records, start):
         if start == 'last':
             #determine how many records exist in the db
             records = int(records)
-            recordCount = db.cursor.execute('SELECT COUNT(*) FROM {}'.format(db.table)).fetchone()[0]
+            recordCount = db.cursor.execute('SELECT COUNT(*) FROM {}'.format('data_log')).fetchone()[0]
             if records > recordCount:
                 #if requesting more records than are present in the db, just return everything in db
-                db.cursor.execute('SELECT * FROM {}'.format(db.table))
+                db.cursor.execute('SELECT * FROM {}'.format('data_log'))
             else:
                 #grab the time stamp from the 'records' from last entry in the db
-                startTime = db.cursor.execute('SELECT Time FROM {} WHERE rowid==({}-{}+1) LIMIT 1'.format(db.table, recordCount, records)).fetchone()[0]
+                startTime = db.cursor.execute('SELECT Time FROM {} WHERE rowid==({}-{}+1) LIMIT 1'.format('data_log', recordCount, records)).fetchone()[0]
                 #select all with timestamp >= startTime
-                db.cursor.execute('SELECT * FROM {} WHERE Time>="{}"'.format(db.table, startTime))      
+                db.cursor.execute('SELECT * FROM {} WHERE Time>="{}"'.format('data_log', startTime))      
         else:
             start = parser.parse(start).isoformat()
             #grab time 'records' number of time stamps from 'start' time forward
-            timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format(db.table, start, records)
+            timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format('data_log', start, records)
             #select the time stamp that is the newest from the timestamps set of records
             endTime = db.cursor.execute('SELECT max(Time) FROM ({})'.format(timestamps)).fetchone()[0]
             #select records between 'start' and 'endtime'
-            db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format(db.table, start, endTime))
+            db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format('data_log', start, endTime))
         #jsonify cannot serialize sqlite3.Row objects, so use list comprehension to convert to a list of dictionaries
         return jsonify([dict(row) for row in db.cursor.fetchall()])
         
