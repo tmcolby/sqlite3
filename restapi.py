@@ -152,30 +152,33 @@ def main():
 
 if __name__ == "__main__":
     import logging
-    logger = logging.getLogger(__name__)
-#     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)-5s - %(message)s')
-    loggingWhitelist = ('root', 'plcclient', 'snap7', 'database', 'datalogger', 'restapi', '__main__')
-    loggingFilename = 'restapi.log'
-    loggingFormat = '%(asctime)s %(name) -15s %(levelname)-9s %(message)s'
-    loggingDateFormat = '%Y-%m-%d %H:%M:%S'
-    loggingLevel = logging.DEBUG
-    
-    class Whitelist(logging.Filter):
-        def __init__(self, *whitelist):
-            self.whitelist = [logging.Filter(name) for name in whitelist]
-    
-        def filter(self, record):
-            return any(f.filter(record) for f in self.whitelist)
+    import logging.handlers
 
-    logging.basicConfig(  
-#         stream=sys.stderr, 
-        filename=loggingFilename,
-        level=loggingLevel,
-        format=loggingFormat,
-        datefmt=loggingDateFormat
-        )
-    for handler in logging.root.handlers:
-        handler.addFilter(Whitelist(*loggingWhitelist))
+    #create local logger
+    logger = logging.getLogger(__name__)
+
+    #create a rotating file logging handler and formatter
+    handler = logging.handlers.RotatingFileHandler('restapi.log', maxBytes=500000000, backupCount=1)
+    formatter = logging.Formatter(fmt='%(asctime)s %(name) -15s %(levelname)-9s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    
+    #create a logging whitelist - (comment out code in ~~ block to enable all child loggers)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#     loggingWhitelist = ('root', 'plcclient', 'snap7', 'database', 'datalogger', 'restapi', '__main__')
+#     class Whitelist(logging.Filter):
+#         def __init__(self, *whitelist):
+#             self.whitelist = [logging.Filter(name) for name in whitelist]
+#     
+#         def filter(self, record):
+#             return any(f.filter(record) for f in self.whitelist)
+#     #add the whitelist filter to the handler
+#     handler.addFilter(Whitelist(*loggingWhitelist))
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #assign the handler to root logger (we use the root logger so that we get output from all child logger used in other modules)
+    logging.root.addHandler(handler)
+    #set the logging level for root logger
+    logging.root.setLevel(logging.DEBUG)
+    
     main()
     logger.info('starting app...')
     WSGIRequestHandler.protocol_version = 'HTTP/1.1'
