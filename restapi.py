@@ -122,10 +122,24 @@ def get_data_logs(records, start):
         return jsonify([dict(row) for row in db.cursor.fetchall()])
         
 
-@app.route('/alarm/json/<int:records>/<start>')
+@app.route('/alarm/json/<records>/<start>')
 def get_alarm_logs(records, start):
-    return jsonify([])
-
+    db = get_db()
+    if not arg_valid(iso8601=start) or not arg_valid(records=records):
+        response = 'HTTP/1.1 500 Internal Server Error'
+        logger.warning(response)
+        return response, 500
+    else:
+        start = parser.parse(start).isoformat()
+        #grab time 'records' number of time stamps from 'start' time forward
+        timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format('alarm_log', start, records)
+        #select the time stamp that is the newest from the timestamps set of records
+        endTime = db.cursor.execute('SELECT max(Time) FROM ({})'.format(timestamps)).fetchone()[0]
+        #select records between 'start' and 'endtime'
+        db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format('alarm_log', start, endTime))
+        #jsonify cannot serialize sqlite3.Row objects, so use list comprehension to convert to a list of dictionaries
+        return jsonify([dict(row) for row in db.cursor.fetchall()])
+        
 #@app.route('/dbreset')
 #def dbreset():
 #    response = dict(message='call not supported; not needed')
