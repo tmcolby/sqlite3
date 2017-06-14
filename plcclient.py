@@ -16,7 +16,6 @@ import sys
 
 import snap7.client as S7
 # import snap7.common
-
 logger = logging.getLogger(__name__)
 
 dataDict = {
@@ -182,7 +181,7 @@ class PlcClient(S7.Client):
         return self._cycles
   
 def main():
-    plc = PlcClient('tags.cfg', 'plc.cfg')
+    plc = PlcClient('data_tags.cfg', 'plc.cfg')
     plc.connect()
     while True:
         readResult = plc.tag_read(plc.tagList)
@@ -196,7 +195,6 @@ def main():
 if __name__ == "__main__":   
     import time
     import sys
-    import logging
     
     loggingWhitelist = ('root', 'plcclient', 'snap7', 'database', '__main__')
     loggingFilename = 'debug.log'

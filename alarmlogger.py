@@ -15,10 +15,10 @@ import sys
 from queue import Queue
 import threading
 
+from configparser import ConfigParser
+
 from plcclient import PlcClient
 from database import Database
-
-
 
 class TagReader(threading.Thread):
     def __init__(self, client, logCycle, tags, lock, queue):
@@ -45,16 +45,23 @@ class TagReader(threading.Thread):
                     self._queue.put(response)
             time.sleep(self._logCycle)
 
+#generator function that returns position of set bits in n
+def bit_test(n):
+    while n:
+        b = n & (~n+1)
+        yield b
+        n ^= b
+
 def main():
     logger.info('Start')
 
     #instantiate the db
     dbFile = 'logs.db'
-    dbTable = 'data_log'
-    dbColumns = (('Name', 'TEXT'), ('Value', 'REAL'), ('Time', 'TEXT'), ('Quality', 'INTEGER'), ('TZ', 'TEXT')) 
+    dbTable = 'alarm_log'
+    dbColumns = (('Procedure', 'INTEGER'), ('Class', 'INTEGER'), ('State', 'INTEGER'), ('Description', 'TEXT'), ('Time', 'TEXT'), ('TZ', 'TEXT')) 
     db = Database(dbFile)
     
-    #TODO need to implement the table creation script!!!!
+    #TODO got to fix this!! need to implement the creation script (lookup flask documentation for example)
 #     if not db.table:
 #         db.create(dbTable, dbColumns)
     
@@ -63,10 +70,14 @@ def main():
     if clearTable == 'clear': 
         db.cursor.execute('DELETE FROM {}'.format(dbTable))
         db.connection.commit()
-    
+            
     #instantiate plc client and connect
-    plcClient = PlcClient('data_tags.cfg', 'plc.cfg')
+    plcClient = PlcClient('alarm_tags.cfg', 'plc.cfg')
     plcClient.connect()
+    
+    #parse alarm definitions config file
+    alarmDefinition = ConfigParser()
+    alarmDefinition.read('alarm_definitions.cfg')
 
     #fire off pool of threads that grab tags from plc at different logging cycles
     threadLock = threading.Lock()
@@ -81,35 +92,45 @@ def main():
         if queue.not_empty:
             dequeue = queue.get()
             
-            cyclicLogs = {key.replace('{','[').replace('}',']'):dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['cyclic']}
-            onChangeLogs = {key.replace('{','[').replace('}',']'):dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['on_change']}
+            #all tags defined for alarms should be type "on-change".  to be safe, explicitly filter for on_change anyway.
+            onChangeLogs = {key:dequeue[key] for key in dequeue.keys() if key in plcClient.tagsByAcqMode['on_change']}
             timestamp = datetime.utcnow().replace(microsecond=0).isoformat()
             
-            #insert cyclic logs into db
-            logger.info('Inserting cyclic logs into DB')
-            for tag, val in cyclicLogs.items():
-                print(tag, val, timestamp, tzid)
-                db.insert(dbTable, (tag, val, timestamp, 1, tzid))
-            
-            #test on_change logs; if there was a change, insert into db    
+            #on first pass, onChangeLogsWere will be empty.  copy onChangeLogs into it with bit-wise inverted values
+            if not onChangeLogsWere:
+                onChangeLogsWere = {tag:~val for tag, val in onChangeLogs.items()}
+
+            #test for changes 
             if onChangeLogs and cmp(onChangeLogs, onChangeLogsWere):
                 logger.info('On-change log/s detected; Inserting into DB')
                 for tag, val in onChangeLogs.items():
-                    if (not onChangeLogsWere) or (onChangeLogs[tag] != onChangeLogsWere[tag]):
-                        print(tag, val, timestamp, tzid)
-                        db.insert(dbTable, (tag, val, timestamp, 1, tzid))
+                    if (onChangeLogs[tag] != onChangeLogsWere[tag]):
+                        #determine which bits of the alarm word have changed
+                        changedBits = onChangeLogs[tag] ^ onChangeLogsWere[tag]
+                        print(tag, 'changed bits:', bin(changedBits))
+                        if changedBits > 0:
+                            for position in bit_test(changedBits):
+                                #if there are changed bits, 
+                                print('position value {}, position {}'.format(position, position.bit_length()))
+                                description = alarmDefinition[tag][str(int(position).bit_length())]
+                                state = int(bool(changedBits & onChangeLogs[tag]))
+                                _class = alarmDefinition[tag].getint('class')
+                                print('Change Detected! {} = {}    Desc: {} = {}   {}   {}   class {}'.format(tag, val, description, state, timestamp, tzid, _class))
+                                db.insert(dbTable, (2, _class, state, description, timestamp, tzid))
+                                
+                #cache a copy tags for comparison next scan
                 onChangeLogsWere = onChangeLogs
          
     
 if __name__ == "__main__": 
     import logging
     import logging.handlers
-
+    
     #create local logger
     logger = logging.getLogger(__name__)
 
     #create a rotating file logging handler and formatter
-    handler = logging.handlers.RotatingFileHandler('datalogger.log', maxBytes=500000000, backupCount=1)
+    handler = logging.handlers.RotatingFileHandler('alarmlogger.log', maxBytes=500000000, backupCount=1)
     formatter = logging.Formatter(fmt='%(asctime)s %(name) -15s %(levelname)-9s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     handler.setFormatter(formatter)
     
@@ -130,5 +151,4 @@ if __name__ == "__main__":
     logging.root.addHandler(handler)
     #set the logging level for root logger
     logging.root.setLevel(logging.DEBUG)
-
     main()

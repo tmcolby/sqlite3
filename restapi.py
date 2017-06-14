@@ -101,31 +101,45 @@ def get_data_logs(records, start):
         if start == 'last':
             #determine how many records exist in the db
             records = int(records)
-            recordCount = db.cursor.execute('SELECT COUNT(*) FROM {}'.format(db.table)).fetchone()[0]
+            recordCount = db.cursor.execute('SELECT COUNT(*) FROM {}'.format('data_log')).fetchone()[0]
             if records > recordCount:
                 #if requesting more records than are present in the db, just return everything in db
-                db.cursor.execute('SELECT * FROM {}'.format(db.table))
+                db.cursor.execute('SELECT * FROM {}'.format('data_log'))
             else:
                 #grab the time stamp from the 'records' from last entry in the db
-                startTime = db.cursor.execute('SELECT Time FROM {} WHERE rowid==({}-{}+1) LIMIT 1'.format(db.table, recordCount, records)).fetchone()[0]
+                startTime = db.cursor.execute('SELECT Time FROM {} WHERE rowid==({}-{}+1) LIMIT 1'.format('data_log', recordCount, records)).fetchone()[0]
                 #select all with timestamp >= startTime
-                db.cursor.execute('SELECT * FROM {} WHERE Time>="{}"'.format(db.table, startTime))      
+                db.cursor.execute('SELECT * FROM {} WHERE Time>="{}"'.format('data_log', startTime))      
         else:
             start = parser.parse(start).isoformat()
             #grab time 'records' number of time stamps from 'start' time forward
-            timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format(db.table, start, records)
+            timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format('data_log', start, records)
             #select the time stamp that is the newest from the timestamps set of records
             endTime = db.cursor.execute('SELECT max(Time) FROM ({})'.format(timestamps)).fetchone()[0]
             #select records between 'start' and 'endtime'
-            db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format(db.table, start, endTime))
+            db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format('data_log', start, endTime))
         #jsonify cannot serialize sqlite3.Row objects, so use list comprehension to convert to a list of dictionaries
         return jsonify([dict(row) for row in db.cursor.fetchall()])
         
 
-@app.route('/alarm/json/<int:records>/<start>')
+@app.route('/alarm/json/<records>/<start>')
 def get_alarm_logs(records, start):
-    return jsonify([])
-
+    db = get_db()
+    if not arg_valid(iso8601=start) or not arg_valid(records=records):
+        response = 'HTTP/1.1 500 Internal Server Error'
+        logger.warning(response)
+        return response, 500
+    else:
+        start = parser.parse(start).isoformat()
+        #grab time 'records' number of time stamps from 'start' time forward
+        timestamps = 'SELECT Time FROM {} WHERE Time>"{}" ORDER BY rowid ASC LIMIT {}'.format('alarm_log', start, records)
+        #select the time stamp that is the newest from the timestamps set of records
+        endTime = db.cursor.execute('SELECT max(Time) FROM ({})'.format(timestamps)).fetchone()[0]
+        #select records between 'start' and 'endtime'
+        db.cursor.execute('SELECT * FROM {} WHERE (Time>"{}" AND Time<="{}")'.format('alarm_log', start, endTime))
+        #jsonify cannot serialize sqlite3.Row objects, so use list comprehension to convert to a list of dictionaries
+        return jsonify([dict(row) for row in db.cursor.fetchall()])
+        
 #@app.route('/dbreset')
 #def dbreset():
 #    response = dict(message='call not supported; not needed')
@@ -152,30 +166,33 @@ def main():
 
 if __name__ == "__main__":
     import logging
-    logger = logging.getLogger(__name__)
-#     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)-5s - %(message)s')
-    loggingWhitelist = ('root', 'plcclient', 'snap7', 'database', 'datalogger', 'restapi', '__main__')
-    loggingFilename = 'restapi.log'
-    loggingFormat = '%(asctime)s %(name) -15s %(levelname)-9s %(message)s'
-    loggingDateFormat = '%Y-%m-%d %H:%M:%S'
-    loggingLevel = logging.DEBUG
-    
-    class Whitelist(logging.Filter):
-        def __init__(self, *whitelist):
-            self.whitelist = [logging.Filter(name) for name in whitelist]
-    
-        def filter(self, record):
-            return any(f.filter(record) for f in self.whitelist)
+    import logging.handlers
 
-    logging.basicConfig(  
-#         stream=sys.stderr, 
-        filename=loggingFilename,
-        level=loggingLevel,
-        format=loggingFormat,
-        datefmt=loggingDateFormat
-        )
-    for handler in logging.root.handlers:
-        handler.addFilter(Whitelist(*loggingWhitelist))
+    #create local logger
+    logger = logging.getLogger(__name__)
+
+    #create a rotating file logging handler and formatter
+    handler = logging.handlers.RotatingFileHandler('restapi.log', maxBytes=500000000, backupCount=1)
+    formatter = logging.Formatter(fmt='%(asctime)s %(name) -15s %(levelname)-9s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    
+    #create a logging whitelist - (comment out code in ~~ block to enable all child loggers)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#     loggingWhitelist = ('root', 'plcclient', 'snap7', 'database', 'datalogger', 'restapi', '__main__')
+#     class Whitelist(logging.Filter):
+#         def __init__(self, *whitelist):
+#             self.whitelist = [logging.Filter(name) for name in whitelist]
+#     
+#         def filter(self, record):
+#             return any(f.filter(record) for f in self.whitelist)
+#     #add the whitelist filter to the handler
+#     handler.addFilter(Whitelist(*loggingWhitelist))
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #assign the handler to root logger (we use the root logger so that we get output from all child logger used in other modules)
+    logging.root.addHandler(handler)
+    #set the logging level for root logger
+    logging.root.setLevel(logging.DEBUG)
+    
     main()
     logger.info('starting app...')
     WSGIRequestHandler.protocol_version = 'HTTP/1.1'
