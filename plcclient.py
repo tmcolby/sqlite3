@@ -149,6 +149,10 @@ class PlcClient(S7.Client):
                     if bit is not None:
                         value = int(bool(value & 1 << bit))
                 
+		#round floats or long floats to precision 4
+		if formatChar == 'f' or 'd':
+			value = round(value, 4)
+
                 response.append((tag,value))
         except Exception as e:
             #exc_type, exc_obj, exc_tb = sys.exc_info()
