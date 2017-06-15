@@ -56,7 +56,7 @@ class PlcClient(S7.Client):
         #build list of tags defined in the config file
         self._tagList = self._config.sections()
         self._tagList.remove('plc_connection')
-        self._tagList.remove('connection_persistance')
+        self._tagList.remove('connection_persistence')
              
         #build a sorted list of logging cycles that have been defined in config    
         self._cycles = []
@@ -100,7 +100,7 @@ class PlcClient(S7.Client):
         Overloaded connect method.  Uses PLC connection settings defined in config file.
         """
         _reconnectCount = 0
-        while _reconnectCount < self._config['connection_persistance'].getint('reconnect_attempts') and not super().get_connected():
+        while _reconnectCount < self._config['connection_persistence'].getint('reconnect_attempts') and not super().get_connected():
             try:
                 super().connect(self._config['plc_connection']['address'], self._config['plc_connection'].getint('rack'),\
                                     self._config['plc_connection'].getint('slot'), self._config['plc_connection'].getint('tcp_port'))  
@@ -108,8 +108,8 @@ class PlcClient(S7.Client):
             except:
                 _reconnectCount += 1
                 logger.warning('Connect failed, attempting to retry ({}) in {} seconds'.format\
-                               (_reconnectCount, self._config['connection_persistance'].getint('reconnect_timeout')))
-                time.sleep(self._config['connection_persistance'].getint('reconnect_timeout'))
+                               (_reconnectCount, self._config['connection_persistence'].getint('reconnect_timeout')))
+                time.sleep(self._config['connection_persistence'].getint('reconnect_timeout'))
         if not super().get_connected():
             logger.error('Could not establish a connection.  An Exception will be raised')
             #TODO: do a better job of raising exception
