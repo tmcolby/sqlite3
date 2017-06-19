@@ -150,7 +150,7 @@ class PlcClient(S7.Client):
                         value = int(bool(value & 1 << bit))
                 
 		#round floats or long floats to precision 4
-		if formatChar == 'f' or 'd':
+		if formatChar == ('f' or 'd'):
 			value = round(value, 4)
 
                 response.append((tag,value))

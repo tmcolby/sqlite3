@@ -28,6 +28,7 @@ class TagReader(threading.Thread):
         self._tags = tags
         self._queue = queue
         self._lock = lock
+	self.daemon = True
         logger.info('{} started. (cycle {})'.format(self.getName(), self._logCycle))
         self.start()
         
