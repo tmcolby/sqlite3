@@ -23,10 +23,13 @@ class Database(object):
         else:
             return self.cursor.execute(query, values)
     
-    def commit(self, query):
+    def commit(self, query=None):
         """ automatically commit or rollback on exception """
-        with self.connection:
-            return self.cursor.execute(query)
+        if query is not None:
+            with self.connection:
+                return self.cursor.execute(query)
+        else:
+            self.connection.commit()
                 
     def __del__(self):
         if self.connection:
