@@ -10,7 +10,7 @@ def dict_factory(cursor, row):
     
 class Database(object):
     def __init__(self, db_path):
-        self.connection = sqlite3.connect(db_path, check_same_thread=False)
+        self.connection = sqlite3.connect(db_path, timeout=30, check_same_thread=False, isolation_level=None)
         self.connection.row_factory = dict_factory
         self.cursor = self.connection.cursor()
         
